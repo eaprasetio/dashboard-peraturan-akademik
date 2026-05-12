@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Peraturan Akademik ITB</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+    <script src="jdih_data.js"></script>
+    <style>
+        :root {
+            --bg-primary: #f4f6fa;
+            --bg-card: #ffffff;
+            --bg-header: #1d3a8a;
+            --bg-accent: #fbbf24;
+            --text-primary: #1a1a2e;
+            --text-secondary: #5b6378;
+            --text-on-dark: #ffffff;
+            --border: #e3e7ef;
+            --c-keputusan: #1d3a8a;
+            --c-peraturan: #10b981;
+            --c-sop: #f59e0b;
+            --c-surat: #8b5cf6;
+            --c-local: #16a34a;
+            --gap: 16px;
+            --radius: 10px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+        .dashboard-container { max-width: 1400px; margin: 0 auto; padding: var(--gap); }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, #1d3a8a 0%, #2563eb 100%);
+            color: var(--text-on-dark);
+            padding: 22px 26px;
+            border-radius: var(--radius);
+            margin-bottom: var(--gap);
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 14px;
+            box-shadow: 0 4px 14px rgba(29, 58, 138, 0.18);
+        }
+        .header-title { display: flex; align-items: center; gap: 14px; }
+        .logo-badge {
+            width: 44px; height: 44px;
+            background: var(--bg-accent);
+            color: var(--bg-header);
+            font-weight: 800; font-size: 16px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            letter-spacing: 0.5px;
+        }
+        .header-title h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.2px; }
+        .header-title .subtitle { font-size: 12px; opacity: 0.85; font-weight: 400; margin-top: 2px; }
+
+        /* SEARCH SECTION */
+        .search-section {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 22px 26px;
+            box-shadow: 0 1px 3px rgba(20,30,60,0.08);
+            margin-bottom: var(--gap);
+            border-top: 4px solid var(--bg-accent);
+        }
+        .search-section h2 {
+            font-size: 16px; font-weight: 600; color: var(--text-primary);
+            margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .search-section h2 .kbd {
+            background: #f1f3f7; border: 1px solid #d1d5db;
+            border-radius: 4px; padding: 2px 6px; font-size: 11px;
+            font-family: 'SF Mono', Menlo, monospace; color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .search-input-wrap {
+            position: relative;
+            display: flex; gap: 10px;
+            margin-bottom: 12px;
+        }
+        .search-input {
+            flex: 1;
+            padding: 14px 18px 14px 44px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
+            color: var(--text-primary);
+            background: #fafbfd;
+            transition: all 0.15s ease;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--c-keputusan);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(29, 58, 138, 0.1);
+        }
+        .search-icon {
+            position: absolute; left: 14px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+        .search-clear {
+            background: #f1f3f7;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 0 16px; border-radius: 8px;
+            font-size: 13px; cursor: pointer; font-family: inherit;
+            font-weight: 500;
+        }
+        .search-clear:hover { background: #e3e7ef; color: var(--text-primary); }
+
+        .search-suggestions {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .search-suggestions .label { color: var(--text-secondary); padding: 4px 0; margin-right: 4px; }
+        .search-pill {
+            background: #eff4ff;
+            color: var(--c-keputusan);
+            padding: 4px 10px;
+            border-radius: 12px;
+            border: 1px solid #dbeafe;
+            font-size: 12px; cursor: pointer;
+            font-family: inherit; font-weight: 500;
+            transition: all 0.15s ease;
+        }
+        .search-pill:hover { background: #dbeafe; border-color: #93c5fd; }
+
+        .search-results { margin-top: 14px; }
+        .search-results-section {
+            margin-top: 14px;
+        }
+        .search-results-section h4 {
+            font-size: 12px; font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 0.6px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 4px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .search-results-section h4 .src-local { color: var(--c-local); }
+        .search-results-section h4 .src-jdih { color: var(--c-keputusan); }
+        .search-results-section .jdih-link {
+            color: var(--c-keputusan); text-decoration: none; font-size: 11px;
+            font-weight: 500; text-transform: none; letter-spacing: 0;
+        }
+        .search-results-section .jdih-link:hover { text-decoration: underline; }
+
+        .search-result-item {
+            padding: 12px 14px;
+            border-radius: 6px;
+            transition: background 0.1s ease;
+            display: flex; gap: 14px; align-items: flex-start;
+        }
+        .search-result-item:hover { background: #fafbfd; }
+        .search-result-item + .search-result-item { border-top: 1px solid #f1f3f7; }
+        .search-result-item .result-meta {
+            display: flex; flex-direction: column; gap: 4px;
+            min-width: 200px;
+        }
+        .search-result-item .result-no {
+            font-family: 'SF Mono', Menlo, monospace;
+            font-size: 12px; color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .search-result-item .result-folder {
+            font-size: 10px; color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 0.4px;
+            font-weight: 600;
+        }
+        .search-result-item .result-date {
+            font-size: 11px; color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+        .search-result-item .result-title {
+            flex: 1;
+            font-size: 13px; line-height: 1.5;
+            color: var(--text-primary);
+        }
+        .search-result-item .result-title a { color: var(--c-keputusan); text-decoration: none; }
+        .search-result-item .result-title a:hover { text-decoration: underline; }
+        .search-result-item.local .result-title a { color: var(--c-local); }
+        .search-result-item mark {
+            background: #fef3c7; color: #92400e;
+            padding: 1px 2px; border-radius: 2px;
+            font-weight: 600;
+        }
+
+        .search-empty {
+            padding: 24px; text-align: center;
+            color: var(--text-secondary); font-size: 13px;
+            background: #fafbfd; border-radius: 6px;
+        }
+        .search-empty a { color: var(--c-keputusan); text-decoration: none; font-weight: 500; }
+        .search-empty a:hover { text-decoration: underline; }
+
+        /* SOURCE BAR */
+        .source-bar {
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            margin-bottom: var(--gap);
+            display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+        }
+        .source-bar a { color: #047857; font-weight: 600; text-decoration: none; }
+        .source-bar a:hover { text-decoration: underline; }
+        .source-bar code {
+            background: rgba(255,255,255,0.7);
+            padding: 2px 6px; border-radius: 3px;
+            font-size: 11px;
+        }
+
+        /* KPIs */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: var(--gap);
+            margin-bottom: var(--gap);
+        }
+        .kpi-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 18px 22px;
+            box-shadow: 0 1px 3px rgba(20,30,60,0.08);
+            border-left: 4px solid var(--c-keputusan);
+        }
+        .kpi-card.k-local { border-left-color: var(--c-local); }
+        .kpi-card.k2 { border-left-color: var(--c-peraturan); }
+        .kpi-card.k3 { border-left-color: var(--c-sop); }
+        .kpi-card.k4 { border-left-color: var(--c-surat); }
+        .kpi-card.k5 { border-left-color: #ef4444; }
+        .kpi-label {
+            font-size: 12px; color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 0.6px;
+            font-weight: 600; margin-bottom: 6px;
+        }
+        .kpi-value {
+            font-size: 30px; font-weight: 700;
+            color: var(--text-primary); line-height: 1.1; margin-bottom: 6px;
+        }
+        .kpi-sub { font-size: 12px; color: var(--text-secondary); }
+
+        /* CHARTS */
+        .chart-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--gap);
+            margin-bottom: var(--gap);
+        }
+        .chart-row.full { grid-template-columns: 1fr; }
+        .chart-container {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 18px 22px;
+            box-shadow: 0 1px 3px rgba(20,30,60,0.08);
+        }
+        .chart-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            margin-bottom: 14px;
+        }
+        .chart-container h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        .chart-container .chart-meta { font-size: 11px; color: var(--text-secondary); }
+        .chart-canvas-wrap { position: relative; height: 280px; }
+        .chart-canvas-wrap.tall { height: 380px; }
+
+        .legend-row {
+            display: flex; gap: 16px; flex-wrap: wrap;
+            font-size: 12px; color: var(--text-secondary);
+            margin-top: 10px;
+        }
+        .legend-row .item { display: flex; align-items: center; gap: 6px; }
+        .legend-row .swatch { width: 12px; height: 12px; border-radius: 3px; }
+
+        /* LOCAL FILES BROWSER */
+        .local-section {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 22px 26px;
+            box-shadow: 0 1px 3px rgba(20,30,60,0.08);
+            margin-bottom: var(--gap);
+        }
+        .local-section h3 {
+            font-size: 15px; font-weight: 600; color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .local-section .section-sub {
+            font-size: 12px; color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+        .folder-group {
+            margin-bottom: 18px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .folder-header {
+            background: #f8faf8;
+            padding: 10px 16px;
+            font-size: 12px; font-weight: 600;
+            color: var(--c-local);
+            border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .folder-header .folder-name { display: flex; align-items: center; gap: 8px; }
+        .folder-header .folder-count { color: var(--text-secondary); font-weight: 500; font-size: 11px; }
+        .file-row {
+            padding: 10px 16px;
+            font-size: 13px;
+            display: flex; gap: 12px; align-items: center;
+            transition: background 0.1s ease;
+        }
+        .file-row:hover { background: #fafbfd; }
+        .file-row + .file-row { border-top: 1px solid #f1f3f7; }
+        .file-row .file-no {
+            font-family: 'SF Mono', Menlo, monospace;
+            font-size: 11px; color: var(--text-secondary);
+            min-width: 130px; font-weight: 500;
+        }
+        .file-row .file-title {
+            flex: 1; line-height: 1.4;
+        }
+        .file-row .file-title a { color: var(--c-local); text-decoration: none; font-weight: 500; }
+        .file-row .file-title a:hover { text-decoration: underline; }
+        .file-row .file-year {
+            font-size: 11px; color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+            min-width: 50px; text-align: right;
+        }
+
+        /* BADGES */
+        .badge {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 12px;
+            font-size: 11px; font-weight: 600;
+            letter-spacing: 0.2px;
+        }
+        .badge-local { background: #dcfce7; color: #15803d; }
+        .badge-keputusan { background: #eff4ff; color: #1d3a8a; }
+        .badge-peraturan { background: #ecfdf5; color: #047857; }
+        .badge-peraturan-sa { background: #ddd6fe; color: #5b21b6; }
+        .badge-sop { background: #fef3c7; color: #b45309; }
+        .badge-surat { background: #ede9fe; color: #6d28d9; }
+        .badge-panduan { background: #fed7aa; color: #9a3412; }
+
+        .dashboard-footer {
+            text-align: center; font-size: 11px;
+            color: var(--text-secondary);
+            padding: 12px 0;
+        }
+        .dashboard-footer a { color: var(--c-keputusan); text-decoration: none; }
+        .dashboard-footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 900px) {
+            .chart-row { grid-template-columns: 1fr; }
+            .dashboard-header { flex-direction: column; align-items: flex-start; }
+            .search-result-item { flex-direction: column; gap: 6px; }
+            .search-result-item .result-meta { min-width: 0; flex-direction: row; gap: 12px; align-items: center; flex-wrap: wrap; }
+            .file-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+            .file-row .file-no { min-width: 0; }
+        }
+        @media print {
+            body { background: white; }
+            .search-section, .source-bar { display: none; }
+            .chart-container, .kpi-card, .local-section { box-shadow: none; border: 1px solid var(--border); }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <div class="header-title">
+                <div class="logo-badge">ITB</div>
+                <div>
+                    <h1>Dashboard Peraturan Akademik ITB</h1>
+                    <div class="subtitle">Eko A. Prasetio &middot; Pengembangan Institusi &middot; SBM ITB</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- SEARCH SECTION -->
+        <section class="search-section">
+            <h2>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="6"/><path d="M14 14l4 4"/></svg>
+                Cari Peraturan
+                <span class="kbd">/</span>
+            </h2>
+            <div class="search-input-wrap">
+                <svg class="search-icon" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="6"/><path d="M14 14l4 4"/></svg>
+                <input type="text" id="search-input" class="search-input" placeholder="Contoh: rekognisi pembelajaran lampau, BPP, kerja sama, kemahasiswaan, standar biaya...">
+                <button class="search-clear" id="search-clear">Bersihkan</button>
+            </div>
+            <div class="search-suggestions">
+                <span class="label">Coba cari:</span>
+                <button class="search-pill" data-q="peraturan akademik">peraturan akademik</button>
+                <button class="search-pill" data-q="BPP">BPP</button>
+                <button class="search-pill" data-q="standar biaya">standar biaya</button>
+                <button class="search-pill" data-q="kerja sama">kerja sama</button>
+                <button class="search-pill" data-q="kemahasiswaan">kemahasiswaan</button>
+                <button class="search-pill" data-q="rekognisi pembelajaran lampau">rekognisi pembelajaran lampau</button>
+                <button class="search-pill" data-q="pembelajaran khusus">pembelajaran khusus</button>
+                <button class="search-pill" data-q="yudisium">yudisium</button>
+                <button class="search-pill" data-q="dosen">dosen</button>
+            </div>
+            <div class="search-results" id="search-results"></div>
+        </section>
+
+        <div class="source-bar">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 110-12 6 6 0 010 12zm-1-9h2v6H9zm0-3h2v2H9z"/></svg>
+            <span>
+                <b>Sumber pencarian:</b>
+                <span style="color: var(--c-local); font-weight: 600;">14 file PDF lokal</span> di folder OneDrive
+                + <span style="color: var(--c-keputusan); font-weight: 600;"><span id="jdih-count">…</span> peraturan</span> dari
+                <a href="https://jdih.itb.ac.id" target="_blank" rel="noopener">JDIH ITB</a>
+                <span id="jdih-meta" style="opacity:0.85"></span>.
+                Untuk perluas database: jalankan <code>python3 scrape_jdih.py</code> di folder ini.
+            </span>
+        </div>
+
+        <section class="kpi-row">
+            <div class="kpi-card k-local">
+                <div class="kpi-label">File Lokal</div>
+                <div class="kpi-value">14</div>
+                <div class="kpi-sub">PDF di OneDrive Anda</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Total di JDIH</div>
+                <div class="kpi-value">1.008</div>
+                <div class="kpi-sub">dokumen 10 tahun terakhir (2017&ndash;2026)</div>
+            </div>
+            <div class="kpi-card k2">
+                <div class="kpi-label">Diterbitkan 2025</div>
+                <div class="kpi-value">252</div>
+                <div class="kpi-sub">dokumen tahun 2025</div>
+            </div>
+            <div class="kpi-card k3">
+                <div class="kpi-label">Diterbitkan 2026</div>
+                <div class="kpi-value">27</div>
+                <div class="kpi-sub">YTD per April 2026</div>
+            </div>
+            <div class="kpi-card k4">
+                <div class="kpi-label">Rata-rata 5 Tahun</div>
+                <div class="kpi-value">149</div>
+                <div class="kpi-sub">dokumen per tahun</div>
+            </div>
+        </section>
+
+        <!-- LOCAL FILES BROWSER -->
+        <section class="local-section">
+            <h3>Daftar File Peraturan Akademik (Lokal)</h3>
+            <p class="section-sub">14 PDF dari folder OneDrive Anda &mdash; klik judul untuk membuka file langsung di komputer.</p>
+            <div id="local-files-browser"></div>
+        </section>
+
+        <section class="chart-row">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>Jumlah Dokumen JDIH per Jenis</h3>
+                    <span class="chart-meta">total semua tahun</span>
+                </div>
+                <div class="chart-canvas-wrap"><canvas id="chart-jenis"></canvas></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>Total Dokumen JDIH per Tahun</h3>
+                    <span class="chart-meta">10 tahun terakhir</span>
+                </div>
+                <div class="chart-canvas-wrap"><canvas id="chart-year"></canvas></div>
+            </div>
+        </section>
+
+        <section class="chart-row full">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>Komposisi Dokumen JDIH per Tahun (Stacked)</h3>
+                    <span class="chart-meta">Klasifikasi 4 jenis produk hukum</span>
+                </div>
+                <div class="chart-canvas-wrap tall"><canvas id="chart-stacked"></canvas></div>
+                <div class="legend-row">
+                    <div class="item"><span class="swatch" style="background:#1d3a8a"></span>Keputusan</div>
+                    <div class="item"><span class="swatch" style="background:#10b981"></span>Peraturan</div>
+                    <div class="item"><span class="swatch" style="background:#f59e0b"></span>SOP</div>
+                    <div class="item"><span class="swatch" style="background:#8b5cf6"></span>Surat Edaran</div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="dashboard-footer">
+            Diperbarui: <span id="data-date"></span> &middot;
+            File lokal: <code style="font-size: 10px;">~/OneDrive/.../Peraturan Akademik</code> &middot;
+            Sumber publik: <a href="https://jdih.itb.ac.id" target="_blank" rel="noopener">jdih.itb.ac.id</a>
+        </footer>
+    </div>
+
+    <script>
+        // ============================================================
+        // LOCAL FILES (folder OneDrive user)
+        // ============================================================
+        const LOCAL_BASE = 'file:///Users/ekoagusprasetio/Library/CloudStorage/OneDrive-InstitutTeknologiBandung/Documents/Eko%20A.%20Prasetio/4.%20Pengembangan%20Institusi/Peraturan%20Akademik';
+
+        const LOCAL_FILES = [
+            // 01-Akademik
+            { folder: '01-Akademik', folderLabel: 'Akademik', file: '01A-29-PER-2025_Peraturan_Akademik_ITB.pdf',
+              jenis: 'Peraturan Rektor', nomor: '29/PER/2025', year: 2025,
+              title: 'Peraturan Akademik ITB',
+              keywords: 'peraturan akademik mahasiswa pendidikan' },
+            { folder: '01-Akademik', folderLabel: 'Akademik', file: '01B-56-SE-WRAM-Pelaksanaan Ketentuan Peralihan Peraturan Akademik 2025 Terkait Yudisium.pdf',
+              jenis: 'Surat Edaran', nomor: 'SE 56/WRAM', year: 2025,
+              title: 'Pelaksanaan Ketentuan Peralihan Peraturan Akademik 2025 Terkait Yudisium',
+              keywords: 'yudisium peralihan akademik wram' },
+            { folder: '01-Akademik', folderLabel: 'Akademik', file: '02-708-PER-2022_Pelanggaran_Peraturan Akademik_dan_Kemahasiswaan.pdf',
+              jenis: 'Peraturan Rektor', nomor: '708/PER/2022', year: 2022,
+              title: 'Pelanggaran Peraturan Akademik dan Kemahasiswaan',
+              keywords: 'pelanggaran kemahasiswaan sanksi disiplin' },
+            { folder: '01-Akademik', folderLabel: 'Akademik', file: '03-316-PER-2022_Kemahasiswaan_ITB.pdf',
+              jenis: 'Peraturan Rektor', nomor: '316/PER/2022', year: 2022,
+              title: 'Kemahasiswaan ITB',
+              keywords: 'kemahasiswaan mahasiswa organisasi kegiatan' },
+            { folder: '01-Akademik', folderLabel: 'Akademik', file: '04-12-PER-SA-2023_Norma_Pencegahan_Perilaku_Seksual_Beresiko.pdf',
+              jenis: 'Peraturan SA', nomor: '12/PER-SA/2023', year: 2023,
+              title: 'Norma Pencegahan Perilaku Seksual Beresiko',
+              keywords: 'pencegahan perilaku seksual norma etik kekerasan' },
+            { folder: '01-Akademik', folderLabel: 'Akademik', file: '05-Panduan-Program-Penyatuan-Sarjana-Magister-PPSM-ITB.pdf',
+              jenis: 'Panduan', nomor: 'PPSM ITB', year: 2024,
+              title: 'Panduan Program Penyatuan Sarjana-Magister (PPSM) ITB',
+              keywords: 'ppsm sarjana magister integrasi penyatuan fast track' },
+
+            // 02-Biaya_Pendidikan
+            { folder: '02-BIaya_Pendidikan', folderLabel: 'Biaya Pendidikan', file: '01-28-PER-2023_BPP_ITB.pdf',
+              jenis: 'Peraturan Rektor', nomor: '28/PER/2023', year: 2023,
+              title: 'Biaya Penyelenggaraan Pendidikan (BPP) ITB',
+              keywords: 'bpp biaya pendidikan ukt spp' },
+            { folder: '02-BIaya_Pendidikan', folderLabel: 'Biaya Pendidikan', file: '02-26-PER-2024_BPP_ITB.pdf',
+              jenis: 'Peraturan Rektor', nomor: '26/PER/2024', year: 2024,
+              title: 'Biaya Penyelenggaraan Pendidikan (BPP) ITB',
+              keywords: 'bpp biaya pendidikan ukt spp tarif' },
+            { folder: '02-BIaya_Pendidikan', folderLabel: 'Biaya Pendidikan', file: '03-13A-PER-2025_Perubahan_Pertama_BPP_26-PER-2024.pdf',
+              jenis: 'Peraturan Rektor', nomor: '13A/PER/2025', year: 2025,
+              title: 'Perubahan Pertama BPP atas Peraturan Rektor 26/PER/2024',
+              keywords: 'bpp perubahan biaya pendidikan' },
+            { folder: '02-BIaya_Pendidikan', folderLabel: 'Biaya Pendidikan', file: '04-8-PER-2026_Perubahan_Kedua_BPP_26-PER-2024.pdf',
+              jenis: 'Peraturan Rektor', nomor: '8/PER/2026', year: 2026,
+              title: 'Perubahan Kedua BPP atas Peraturan Rektor 26/PER/2024',
+              keywords: 'bpp perubahan biaya pendidikan kedua 2026' },
+            { folder: '02-BIaya_Pendidikan', folderLabel: 'Biaya Pendidikan', file: '05-24-PER-2025_Pengelolaan_Kegiatan_Pembelajaran_Khusus.pdf',
+              jenis: 'Peraturan Rektor', nomor: '24/PER/2025', year: 2025,
+              title: 'Pengelolaan Kegiatan Pembelajaran Khusus',
+              keywords: 'pembelajaran khusus international class kelas internasional' },
+            { folder: '02-BIaya_Pendidikan', folderLabel: 'Biaya Pendidikan', file: '06-23-PER-2025_Ketentuan_Pengelolaan_Kerma.pdf',
+              jenis: 'Peraturan Rektor', nomor: '23/PER/2025', year: 2025,
+              title: 'Ketentuan Pengelolaan Dana Kegiatan Kerja Sama (Kerma)',
+              keywords: 'kerja sama kerma dana pengelolaan' },
+            { folder: '02-BIaya_Pendidikan', folderLabel: 'Biaya Pendidikan', file: '07-25-PER-2025_Mekanisme_Penggunaan_Dana_Kerma.pdf',
+              jenis: 'Peraturan Rektor', nomor: '25/PER/2025', year: 2025,
+              title: 'Mekanisme Penggunaan Dana Pengelolaan Kerja Sama (Kerma)',
+              keywords: 'kerja sama kerma dana mekanisme penggunaan' },
+
+            // 03-Satuan_Biaya_ITB
+            { folder: '03-Satuan_Biaya_ITB', folderLabel: 'Satuan Biaya ITB', file: '01-10-PER-2026-Standar_Biaya_ITB.pdf',
+              jenis: 'Peraturan Rektor', nomor: '10/PER/2026', year: 2026,
+              title: 'Standar Biaya ITB',
+              keywords: 'standar biaya tarif satuan honorarium' },
+        ];
+
+        function localFileURL(folder, file) {
+            return LOCAL_BASE + '/' + encodeURIComponent(folder) + '/' + encodeURIComponent(file);
+        }
+
+        // ============================================================
+        // JDIH DATABASE — di-load dari jdih_data.js
+        // ============================================================
+        // window.JDIH_DATA dan window.PERATURAN_DB di-set oleh jdih_data.js
+        // Untuk update database: jalankan `python3 scrape_jdih.py` di folder ini
+        const PERATURAN_DB = (window.PERATURAN_DB || []);
+
+        const MATRIX_DATA = [
+            [2026,   1, 14,  3,  9],
+            [2025, 105, 74, 35, 38],
+            [2024,  34, 44, 32, 72],
+            [2023,  14, 61, 69, 70],
+            [2022,   6, 39, 61, 20],
+            [2021,  14, 26, 19,  9],
+            [2020,   4, 30, 46,  3],
+            [2019,   4, 10,  3,  1],
+            [2018,   3,  9, 10,  0],
+            [2017,   6,  9,  0,  1],
+        ];
+        const JENIS_NAMES = ['Keputusan', 'Peraturan', 'SOP', 'Surat Edaran'];
+        const JENIS_COLORS = ['#1d3a8a', '#10b981', '#f59e0b', '#8b5cf6'];
+
+        // ============================================================
+        // SEARCH ENGINE (local-first, JDIH fallback)
+        // ============================================================
+        function normalize(s) {
+            return String(s || '').toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+
+        function scoreItem(haystack, query, tokens) {
+            let score = 0;
+            let allMatch = true;
+            tokens.forEach(t => {
+                if (haystack.includes(t)) score += 1;
+                else allMatch = false;
+            });
+            if (haystack.includes(query)) score += 5;
+            return { score, allMatch };
+        }
+
+        function searchLocal(query) {
+            const q = normalize(query);
+            if (!q) return [];
+            const tokens = q.split(' ').filter(t => t.length > 0);
+            const results = LOCAL_FILES.map(item => {
+                const haystack = normalize(item.title + ' ' + item.nomor + ' ' + item.jenis + ' ' + item.folderLabel + ' ' + (item.keywords || ''));
+                const { score, allMatch } = scoreItem(haystack, q, tokens);
+                return { item, score, allMatch };
+            }).filter(r => r.allMatch && r.score > 0);
+            results.sort((a, b) => b.score - a.score || b.item.year - a.item.year);
+            return results.map(r => r.item);
+        }
+
+        function searchJDIH(query) {
+            const q = normalize(query);
+            if (!q) return [];
+            const tokens = q.split(' ').filter(t => t.length > 0);
+            const results = PERATURAN_DB.map(item => {
+                const haystack = normalize(item.title + ' ' + item.nomor + ' ' + item.jenis);
+                const { score, allMatch } = scoreItem(haystack, q, tokens);
+                return { item, score, allMatch };
+            }).filter(r => r.allMatch && r.score > 0);
+            results.sort((a, b) => b.score - a.score || new Date(b.item.date) - new Date(a.item.date));
+            return results.map(r => r.item);
+        }
+
+        function highlight(text, query) {
+            if (!query) return escapeHTML(text);
+            const tokens = normalize(query).split(' ').filter(t => t.length > 1);
+            let out = escapeHTML(text);
+            tokens.forEach(t => {
+                const re = new RegExp('(' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                out = out.replace(re, '<mark>$1</mark>');
+            });
+            return out;
+        }
+
+        function escapeHTML(s) {
+            return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        }
+
+        function badgeFor(jenis) {
+            if (jenis === 'Peraturan Rektor') return '<span class="badge badge-peraturan">Per. Rektor</span>';
+            if (jenis === 'Peraturan SA')     return '<span class="badge badge-peraturan-sa">Per. SA</span>';
+            if (jenis === 'Keputusan')        return '<span class="badge badge-keputusan">Keputusan</span>';
+            if (jenis === 'SOP')              return '<span class="badge badge-sop">SOP</span>';
+            if (jenis === 'Surat Edaran')     return '<span class="badge badge-surat">Surat Edaran</span>';
+            if (jenis === 'Panduan')          return '<span class="badge badge-panduan">Panduan</span>';
+            return '<span class="badge badge-keputusan">' + escapeHTML(jenis) + '</span>';
+        }
+
+        function renderSearchResults(query) {
+            const container = document.getElementById('search-results');
+            if (!query || !query.trim()) { container.innerHTML = ''; return; }
+
+            const localMatches = searchLocal(query);
+            const jdihMatches = searchJDIH(query);
+            const jdihUrl = 'https://jdih.itb.ac.id/informasi-hukum/produk-hukum-itb/peraturan';
+
+            let html = '';
+
+            // LOCAL section
+            html += '<div class="search-results-section">';
+            html += '<h4><span class="src-local">FILE LOKAL ANDA</span> <span style="color: var(--text-secondary); font-weight: 400; text-transform: none; letter-spacing: 0;">' + localMatches.length + ' hasil</span></h4>';
+            if (localMatches.length === 0) {
+                html += '<div class="search-empty">Tidak ada di folder lokal Anda untuk &ldquo;' + escapeHTML(query) + '&rdquo;.</div>';
+            } else {
+                html += localMatches.map(item => {
+                    const url = localFileURL(item.folder, item.file);
+                    return `
+                        <div class="search-result-item local">
+                            <div class="result-meta">
+                                <span class="badge badge-local">📁 LOKAL</span>
+                                ${badgeFor(item.jenis)}
+                                <span class="result-no">${escapeHTML(item.nomor)}</span>
+                                <span class="result-folder">${escapeHTML(item.folderLabel)}</span>
+                                <span class="result-date">${item.year}</span>
+                            </div>
+                            <div class="result-title">
+                                <a href="${url}" target="_blank">${highlight(item.title, query)}</a>
+                                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">${escapeHTML(item.file)}</div>
+                            </div>
+                        </div>`;
+                }).join('');
+            }
+            html += '</div>';
+
+            // JDIH section
+            html += '<div class="search-results-section">';
+            html += '<h4><span class="src-jdih">JDIH ITB (PUBLIK)</span> <span style="color: var(--text-secondary); font-weight: 400; text-transform: none; letter-spacing: 0;">' + jdihMatches.length + ' hasil</span> <a class="jdih-link" href="' + jdihUrl + '" target="_blank" rel="noopener">Cari di JDIH lengkap &rarr;</a></h4>';
+            if (jdihMatches.length === 0) {
+                html += '<div class="search-empty">Tidak ada di database JDIH lokal. <a href="' + jdihUrl + '" target="_blank" rel="noopener">Cari di JDIH lengkap (1.008 dokumen 10 tahun terakhir)</a>.</div>';
+            } else {
+                html += jdihMatches.slice(0, 10).map(item => {
+                    const dateStr = new Date(item.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                    const url = `https://jdih.itb.ac.id/informasi-hukum/produk-hukum-itb/v/${item.id}`;
+                    return `
+                        <div class="search-result-item">
+                            <div class="result-meta">
+                                ${badgeFor(item.jenis)}
+                                <span class="result-no">${escapeHTML(item.nomor)}</span>
+                                <span class="result-date">${dateStr}</span>
+                            </div>
+                            <div class="result-title">
+                                <a href="${url}" target="_blank" rel="noopener">${highlight(item.title, query)}</a>
+                            </div>
+                        </div>`;
+                }).join('');
+                if (jdihMatches.length > 10) {
+                    html += '<div style="text-align: center; padding: 8px; font-size: 11px; color: var(--text-secondary);">' + (jdihMatches.length - 10) + ' hasil lainnya — refine pencarian atau buka JDIH</div>';
+                }
+            }
+            html += '</div>';
+
+            container.innerHTML = html;
+        }
+
+        // ============================================================
+        // LOCAL FILES BROWSER
+        // ============================================================
+        function renderLocalBrowser() {
+            const container = document.getElementById('local-files-browser');
+            const folders = {};
+            LOCAL_FILES.forEach(f => {
+                if (!folders[f.folderLabel]) folders[f.folderLabel] = [];
+                folders[f.folderLabel].push(f);
+            });
+
+            let html = '';
+            Object.keys(folders).forEach(folderLabel => {
+                const items = folders[folderLabel];
+                html += `<div class="folder-group">
+                    <div class="folder-header">
+                        <div class="folder-name">
+                            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h4l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V5z"/></svg>
+                            ${escapeHTML(folderLabel)}
+                        </div>
+                        <span class="folder-count">${items.length} file</span>
+                    </div>`;
+                items.forEach(item => {
+                    const url = localFileURL(item.folder, item.file);
+                    html += `<div class="file-row">
+                        ${badgeFor(item.jenis)}
+                        <span class="file-no">${escapeHTML(item.nomor)}</span>
+                        <div class="file-title"><a href="${url}" target="_blank">${escapeHTML(item.title)}</a></div>
+                        <span class="file-year">${item.year}</span>
+                    </div>`;
+                });
+                html += '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            renderLocalBrowser();
+            document.getElementById('data-date').textContent = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            // Populate JDIH count from jdih_data.js
+            const countEl = document.getElementById('jdih-count');
+            const metaEl = document.getElementById('jdih-meta');
+            if (countEl) countEl.textContent = PERATURAN_DB.length;
+            if (metaEl && window.JDIH_DATA) {
+                const yf = window.JDIH_DATA.year_from;
+                const yt = window.JDIH_DATA.year_to;
+                metaEl.textContent = ` (${yf}–${yt})`;
+            }
+
+            // Search
+            const searchInput = document.getElementById('search-input');
+            const searchClear = document.getElementById('search-clear');
+            searchInput.addEventListener('input', e => renderSearchResults(e.target.value));
+            searchClear.addEventListener('click', () => {
+                searchInput.value = '';
+                renderSearchResults('');
+                searchInput.focus();
+            });
+            document.querySelectorAll('.search-pill').forEach(pill => {
+                pill.addEventListener('click', () => {
+                    const q = pill.dataset.q;
+                    searchInput.value = q;
+                    renderSearchResults(q);
+                    searchInput.focus();
+                });
+            });
+            document.addEventListener('keydown', e => {
+                if (e.key === '/' && document.activeElement !== searchInput) {
+                    e.preventDefault();
+                    searchInput.focus();
+                    searchInput.select();
+                }
+                if (e.key === 'Escape' && document.activeElement === searchInput) {
+                    searchInput.value = '';
+                    renderSearchResults('');
+                    searchInput.blur();
+                }
+            });
+
+            // Charts
+            const totals = [255, 361, 351, 278];
+            new Chart(document.getElementById('chart-jenis'), {
+                type: 'bar',
+                data: { labels: JENIS_NAMES, datasets: [{ data: totals, backgroundColor: JENIS_COLORS.map(c => c + 'CC'), borderColor: JENIS_COLORS, borderWidth: 1, borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.x.toLocaleString('id-ID')} dokumen` } } }, scales: { x: { beginAtZero: true, ticks: { color: '#5b6378' }, grid: { color: '#f0f3f8' } }, y: { ticks: { color: '#1a1a2e', font: { size: 12, weight: '500' } }, grid: { display: false } } } }
+            });
+
+            const labels = MATRIX_DATA.map(r => String(r[0])).reverse();
+            const totalPerYear = MATRIX_DATA.map(r => r[1]+r[2]+r[3]+r[4]).reverse();
+            new Chart(document.getElementById('chart-year'), {
+                type: 'bar',
+                data: { labels, datasets: [{ data: totalPerYear, backgroundColor: '#2563ebCC', borderColor: '#1d3a8a', borderWidth: 1, borderRadius: 5 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.y.toLocaleString('id-ID')} dokumen` } } }, scales: { x: { ticks: { color: '#5b6378' }, grid: { display: false } }, y: { beginAtZero: true, ticks: { color: '#5b6378' }, grid: { color: '#f0f3f8' } } } }
+            });
+
+            const stackedDatasets = JENIS_NAMES.map((name, i) => ({
+                label: name, data: MATRIX_DATA.map(r => r[i+1]).reverse(),
+                backgroundColor: JENIS_COLORS[i] + 'DD', borderColor: JENIS_COLORS[i], borderWidth: 1, borderRadius: 3
+            }));
+            new Chart(document.getElementById('chart-stacked'), {
+                type: 'bar',
+                data: { labels, datasets: stackedDatasets },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y.toLocaleString('id-ID')}` } } }, scales: { x: { stacked: true, ticks: { color: '#5b6378' }, grid: { display: false } }, y: { stacked: true, beginAtZero: true, ticks: { color: '#5b6378' }, grid: { color: '#f0f3f8' } } } }
+            });
+        });
+    </script>
+</body>
+</html>
