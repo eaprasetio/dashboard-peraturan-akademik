@@ -427,10 +427,13 @@
             background: #f1f3f7;
             position: relative;
         }
-        .preview-body iframe {
+        .preview-body iframe,
+        .preview-body embed,
+        .preview-body object {
             width: 100%; height: 100%; border: none;
-            background: white;
+            background: white; display: block;
         }
+        #preview-container { width: 100%; height: 100%; }
         .preview-fallback {
             position: absolute; inset: 0;
             display: none;
@@ -614,12 +617,20 @@
                 <button class="btn-close" id="preview-close" aria-label="Tutup preview">&times;</button>
             </div>
             <div class="preview-body">
-                <iframe id="preview-iframe" src="about:blank" referrerpolicy="no-referrer"></iframe>
+                <div id="preview-container" style="width:100%;height:100%"></div>
                 <div id="preview-fallback" class="preview-fallback">
                     <svg width="48" height="48" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 3v4a1 1 0 001 1h4M14 3H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7l-4-4z"/></svg>
-                    <div>
-                        Preview tidak tersedia dari browser (situs memblokir iframe atau file tidak dapat dimuat).<br>
-                        Silakan buka file/halaman langsung di tab baru.
+                    <div id="preview-fallback-msg">
+                        <b>Preview tidak dapat dimuat.</b>
+                        <div style="font-size: 12px; margin-top: 10px;">Kemungkinan penyebab:</div>
+                        <ul style="text-align: left; font-size: 12px; margin: 8px auto; max-width: 480px; line-height: 1.7;">
+                            <li><b>File tidak ditemukan</b> di lokasi yang diharapkan. URL yang dicoba:<br>
+                                <code id="preview-failed-url" style="display:block;background:#f1f3f7;padding:6px 8px;border-radius:3px;font-size:10px;word-break:break-all;margin-top:4px;">—</code>
+                                <span style="font-size: 11px;">Pastikan folder <code>01-Akademik</code>, <code>02-BIaya_Pendidikan</code>, <code>03-Satuan_Biaya_ITB</code> ada di folder yang sama dengan HTML ini.</span>
+                            </li>
+                            <li><b>Halaman web blokir iframe</b> (X-Frame-Options) — biasa untuk halaman JDIH.</li>
+                            <li><b>Chrome user:</b> jalankan local server: <code style="background:#f1f3f7;padding:2px 6px;border-radius:3px;">python3 -m http.server 8000</code></li>
+                        </ul>
                     </div>
                     <a id="preview-fallback-link" href="#" target="_blank" rel="noopener">Buka di tab baru</a>
                 </div>
@@ -631,7 +642,19 @@
         // ============================================================
         // LOCAL FILES (folder OneDrive user)
         // ============================================================
-        const LOCAL_BASE = 'file:///Users/ekoagusprasetio/Library/CloudStorage/OneDrive-InstitutTeknologiBandung/Documents/Eko%20A.%20Prasetio/4.%20Pengembangan%20Institusi/Peraturan%20Akademik';
+        // ====================================================================
+        // KONFIGURASI PATH PDF LOKAL
+        // --------------------------------------------------------------------
+        // Default: './' — PDF dicari di folder yang sama dengan dashboard HTML.
+        // GANTI di sini kalau dashboard Anda ada di lokasi BERBEDA dari folder PDF.
+        // Contoh:
+        //   const LOCAL_BASE = './';                                       // sama folder
+        //   const LOCAL_BASE = '../Peraturan Akademik/';                   // satu level atas
+        //   const LOCAL_BASE = 'file:///Users/eko/OneDrive/.../Peraturan Akademik/';  // absolut
+        // Catatan: di Safari, file:// absolut works dari halaman file://;
+        //          di Chrome perlu jalankan via local server (lihat README).
+        // ====================================================================
+        const LOCAL_BASE = './';
 
         const LOCAL_FILES = [
             // 01-Akademik
@@ -698,7 +721,7 @@
         ];
 
         function localFileURL(folder, file) {
-            return LOCAL_BASE + '/' + encodeURIComponent(folder) + '/' + encodeURIComponent(file);
+            return LOCAL_BASE + encodeURIComponent(folder) + '/' + encodeURIComponent(file);
         }
 
         // ============================================================
@@ -908,7 +931,7 @@
         // ============================================================
         function openPreview(url, title, nomor, kind) {
             const overlay = document.getElementById('preview-overlay');
-            const iframe = document.getElementById('preview-iframe');
+            const container = document.getElementById('preview-container');
             const fallback = document.getElementById('preview-fallback');
             const titleEl = document.getElementById('preview-title-text');
             const metaEl = document.getElementById('preview-meta');
@@ -920,28 +943,78 @@
             externalLink.href = url;
             fallbackLink.href = url;
             fallback.classList.remove('show');
-            iframe.style.display = 'block';
+            const failedUrlEl = document.getElementById('preview-failed-url');
+            if (failedUrlEl) failedUrlEl.textContent = url;
 
-            // For JDIH pages, iframe embedding may be blocked. We'll detect with a timeout.
-            // For local PDFs, browsers render natively.
-            iframe.src = url;
+            // Clear previous preview
+            container.innerHTML = '';
+            clearTimeout(window._previewTimeout);
 
-            // Timeout fallback: if iframe doesn't load anything visible in 3s, show fallback
-            // (rough heuristic, can't truly detect X-Frame-Options from same JS)
-            if (kind === 'jdih') {
-                clearTimeout(window._previewTimeout);
-                window._previewTimeout = setTimeout(() => {
-                    try {
-                        // Try to access iframe contentDocument — will throw if cross-origin
-                        const doc = iframe.contentDocument;
-                        if (!doc || !doc.body || doc.body.innerHTML.length < 50) {
-                            // iframe seems empty
+            const isPDF = /\.pdf($|\?)/i.test(url);
+
+            if (isPDF) {
+                // For PDFs, Safari renders best with <iframe>.
+                // (Safari activates PDFKit/Preview's PDF viewer for iframe with .pdf src.)
+                const iframe = document.createElement('iframe');
+                iframe.src = url;
+                iframe.style.cssText = 'width:100%;height:100%;border:none;background:white;';
+                iframe.title = title || 'Preview PDF';
+
+                let loaded = false;
+                iframe.addEventListener('load', () => { loaded = true; });
+                iframe.addEventListener('error', () => {
+                    console.warn('PDF preview error for:', url);
+                    fallback.classList.add('show');
+                });
+
+                container.appendChild(iframe);
+
+                // Verify the URL is reachable via HEAD request (catches "file not found" silently)
+                // Skip the check for file:// URLs (Safari blocks fetch from file://)
+                if (url.startsWith('http')) {
+                    fetch(url, { method: 'HEAD' }).then(r => {
+                        if (!r.ok) {
+                            console.warn('PDF not found:', url, r.status);
                             fallback.classList.add('show');
                         }
-                    } catch (e) {
-                        // cross-origin — that's fine, page loaded
+                    }).catch(() => { /* CORS or network — let iframe try */ });
+                }
+
+                // Fallback if iframe doesn't load anything in 4s
+                window._previewTimeout = setTimeout(() => {
+                    if (!loaded) {
+                        console.warn('PDF iframe load timeout for:', url);
+                        fallback.classList.add('show');
                     }
-                }, 3000);
+                }, 4000);
+            } else {
+                // For web pages (JDIH), use iframe
+                const iframe = document.createElement('iframe');
+                iframe.src = url;
+                iframe.style.cssText = 'width:100%;height:100%;border:none;background:white;';
+                iframe.referrerPolicy = 'no-referrer';
+
+                let loaded = false;
+                iframe.addEventListener('load', () => { loaded = true; });
+
+                container.appendChild(iframe);
+
+                // If iframe didn't fire load event in 4s, likely blocked by X-Frame-Options
+                window._previewTimeout = setTimeout(() => {
+                    if (!loaded) {
+                        fallback.classList.add('show');
+                    } else {
+                        // Loaded but might be empty due to cross-origin or blank
+                        try {
+                            const doc = iframe.contentDocument;
+                            if (!doc || !doc.body || doc.body.innerHTML.trim().length < 50) {
+                                fallback.classList.add('show');
+                            }
+                        } catch (e) {
+                            // cross-origin — page loaded, can't inspect, assume OK
+                        }
+                    }
+                }, 4000);
             }
 
             overlay.classList.add('open');
@@ -950,9 +1023,9 @@
 
         function closePreview() {
             const overlay = document.getElementById('preview-overlay');
-            const iframe = document.getElementById('preview-iframe');
+            const container = document.getElementById('preview-container');
             overlay.classList.remove('open');
-            iframe.src = 'about:blank';
+            container.innerHTML = '';
             document.body.style.overflow = '';
             clearTimeout(window._previewTimeout);
         }
